@@ -1,9 +1,9 @@
 '''
+2017 IFN680 Assignment   DUE: 25 September 2017
 
-2017 IFN680 Assignment
-
-Instructions: 
-    - You should implement the class PatternPosePopulation
+Student Name:     Helen Jeffrey
+Student Number:   n9416528
+Student eMail:    h.jeffrey@connect.qut.edu.au
 
 '''
 
@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 
 import pattern_utils
 import population_search
+
+import timeit
 
 #------------------------------------------------------------------------------
 
@@ -40,9 +42,58 @@ class PatternPosePopulation(population_search.Population):
             self.best_cost 
         @return 
            best cost of this generation            
+        ''' 
+        
         '''
- 
-        	# INSERT YOUR CODE HERE
+        1. It's possible that the mutate() function has caused some particles to
+        travel outside of the landscape boundaries.
+        Here we clip the particles so that they remain inside.
+        '''
+        height, width = self.distance_image.shape[:2]
+
+        np.clip(self.W[:, 0], 0, width-1, self.W[:,0]) # X
+        np.clip(self.W[:, 1], 0, height-1, self.W[:,1]) # Y
+        
+              
+        '''
+        2. Calculate the cost of each particle
+        The 'landscape' array contains the cost of each pixel
+        The 'W' array contains the location of each particle (as a float)
+        We convert from float to int to get the pixel location
+        '''
+        self.C = self.distance_image[self.W[:,1].astype(int), self.W[:,0].astype(int)]
+        
+        '''
+        3. Evaluate cost of shape (Triangle)  
+        # for i in population self.W
+#        = evaluate(imd,self.W[i])#        
+#        score, ignore = self.pat.evaluate(self.distance_image, self.W[0])
+        '''
+        evaluateResults = np.zeros(self.n)
+        
+        for i in range(self.n):            
+            results = self.pat.evaluate(self.distance_image, self.W[i])            
+            evaluateResults[i] = np.array(results[0])
+        self.C = np.array(evaluateResults)        
+                
+#        print('debug, evaluateResults: ', evaluateResults[i], 'debug, results: ', results)
+        
+        # Determine which particle has the cheapest cost
+        i_min = self.C.argmin()
+        
+        # Get the cost of the cheapest particle
+        cost_min = self.C[i_min]        
+        
+        # If it is the best particle found so far, save it
+        if cost_min < self.best_cost:
+            self.best_w = self.W[i_min].copy()
+            self.best_cost = cost_min
+
+        # Return the minimum cost found
+#        print("Score for pose 0 is: " + str(score), " MIN: ", cost_min)
+#        bestOfGen = bestOfGen + ', ' + str(cost_min)
+        return cost_min
+    
 
     def mutate(self):
         '''
@@ -57,10 +108,22 @@ class PatternPosePopulation(population_search.Population):
           self.W has been mutated.
         '''
         
-        assert self.W.shape==(self.n,4)
-
-        	# INSERT YOUR CODE HERE
+        assert self.W.shape==(self.n, 4)        
                 
+        '''
+        1. Mutate the values: x, y, Scale
+        Add with equal probability -1,0 or +1 to the points of self.W
+        '''        
+        mutations = np.random.choice([-1,0,1], 4*self.n, replace=True, p = [1/3,1/3,1/3]).reshape(-1,4)  
+        
+        '''
+        2. Mutate theta (the angle) 
+        Add the equivalent of 1 degree in radians.
+'''
+        mutations[:,2] = 0.0174533
+        
+        self.W = self.W + mutations
+        
     def set_distance_image(self, distance_image):
         self.distance_image = distance_image
 
@@ -71,6 +134,8 @@ def initial_population(region, scale = 10, pop_size=20):
     
     '''        
     # initial population: exploit info from region
+    
+    
     rmx, rMx, rmy, rMy = region
     W = np.concatenate( (
                  np.random.uniform(low=rmx,high=rMx, size=(pop_size,1)) ,
@@ -81,13 +146,18 @@ def initial_population(region, scale = 10, pop_size=20):
                         ), axis=1)    
     return W
 
+
+
 #------------------------------------------------------------------------------        
-def test_particle_filter_search():
+def test_particle_filter_search(population, genererations):
     '''
-    Run the particle filter search on test image 1 or image 2of the pattern_utils module
+    Run the particle filter search on test image 1 or image 2 of the pattern_utils module
     
     '''
-    
+#    print('test_particle_filter_search')
+#    executionTime = ''
+    start_time = timeit.default_timer()
+
     if True:
         # use image 1
         imf, imd , pat_list, pose_list = pattern_utils.make_test_image_1(True)
@@ -104,7 +174,7 @@ def test_particle_filter_search():
     region = (xs-20, xs+20, ys-20, ys+20)
     scale = pose_list[ipat][3]
         
-    pop_size=60
+    pop_size=population
     W = initial_population(region, scale , pop_size)
     
     pop = PatternPosePopulation(W, pat)
@@ -112,29 +182,118 @@ def test_particle_filter_search():
     
     pop.temperature = 5
     
-    Lw, Lc = pop.particle_filter_search(40,log=True)
+    Lw, Lc = pop.particle_filter_search(genererations,log=True)
+    
+    executionTime = timeit.default_timer() - start_time
+#    print('executionTime: ', executionTime)
+    
     
     plt.plot(Lc)
     plt.title('Cost vs generation index')
     plt.show()
     
-    print(pop.best_w)
-    print(pop.best_cost)
+#    print('TEST TIMESTAMP: \t\tTODO')    
+#    print('TEST EXECUTION (executionTime): TODO', executionTime)
+#    print('TEST POPULATION (population): \t', population)
+#    print('TEST GENERATIONS (genererations): ', genererations)
+#    print('BEST SHAPE (pop.best_w): \t', pop.best_w)
+#    print('COST OF SHAPE (pop.best_cost): \t', pop.best_cost)
+#    print('TEST Lw (Lw): \t', str(Lw))
+#    print('TEST Lc (Lc): \t', str(Lc))
+#    print('BEST OF GENERATION: \t', bestOfGen)
+    
+    
     
         
     pattern_utils.display_solution(pat_list, 
                       pose_list, 
                       pat,
                       pop.best_w)
+    
+    #TODO save solution to file use [start_time]_Solution.png name
                       
     pattern_utils.replay_search(pat_list, 
                       pose_list, 
                       pat,
                       Lw)
-#------------------------------------------------------------------------------        
+    report_particle_filter_search(start_time, executionTime, population, genererations, Lc) 
+    
+    
+#------------------------------------------------------------------------------  
 
-if __name__=='__main__':
-    test_particle_filter_search()
+def report_particle_filter_search(startTime, executionTime, population, genererations, Lc):
+    '''
+    Create a report for the execution of the particle_filter_search
+    Report captures (in csv format) :
+        test name,
+        timestamp,
+        execution time,  
+        population, 
+        genererations,  
+        best_cost for overall
+        best_cost for each generation    
+        
+    '''
+#    print('TEST TIMESTAMP : \t', startTime)   
+#    print('TEST EXECUTION (s) : \t TODO')#, executionTime)
+#    print('TEST POPULATION : \t', population)
+#    print('TEST GENERATIONS : \t', genererations)
+#    print('BEST OF GENERATION : \t', Lc)
+
+    
+    titles = 'testName,startTime,executionTime,population,genererations'            
+    newRow = 'p' + str(population) + ' x ' + 'g' + str(genererations) + ',' + str(startTime) + ',' + str(executionTime) + ',' + str(population) + ',' + str(genererations) + ', ' + str(Lc).strip('[]')
+   
+    count = 0
+    # TODO help debug this
+    for i in Lc:
+        count = count + 1
+        #newRow = newRow + str(Lc[i])  
+        titles = titles + ',' + str(count)
+        
+#    print(titles)
+#    print(newRow)
+      
+#    IF file exists, open and append row
+    fName = ('log_particle_filter_search_.csv')
+    with open(fName,'a') as f:
+        #TODO if file is empty write column names
+#        f.write(titles + '\n')
+        f.write(newRow + '\n')
+        f.close()    
+                    
+#------------------------------------------------------------------------------        
+if __name__=='__main__':    
+    '''
+    This function calls the test_particle_filter_search(population, genererations)
+    test population and genereration sizes are specified 
+    testRepeat - specifies the number of times a test is to be repeated
+    The assignment allows for a computational budget of 1000 (e.g. 5x200, 50x20)
+    
+    '''     
+    
+    testRepeat, t = 1, 1    
+    
+    while t <= testRepeat:    
+        
+#        test_particle_filter_search(100, 100)   # computational budget = 10000
+#        test_particle_filter_search(70, 100)   # computational budget = 7000
+#        test_particle_filter_search(40, 100)   # computational budget = 4000
+#        test_particle_filter_search(20, 100)   # computational budget = 2000
+#        test_particle_filter_search(100, 70)   # computational budget = 7000
+#        test_particle_filter_search(100, 40)   # computational budget = 4000
+#        test_particle_filter_search(100, 20)   # computational budget = 2000
+
+#        test_particle_filter_search(1, 1000)   # computational budget = 1000
+#        test_particle_filter_search(5, 200)   # computational budget = 1000
+        test_particle_filter_search(10, 100)   # computational budget = 1000
+#        test_particle_filter_search(20, 50)   # computational budget = 1000
+#        test_particle_filter_search(50, 20)   # computational budget = 1000
+#        test_particle_filter_search(100, 10)   # computational budget = 1000
+#        test_particle_filter_search(200, 5)   # computational budget = 1000
+#        test_particle_filter_search(1000, 1)   # computational budget = 1000
+        t = t + 1
+
     
     
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
