@@ -10,7 +10,6 @@ Student eMail:    h.jeffrey@connect.qut.edu.au
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 import pattern_utils
 import population_search
 
@@ -96,11 +95,10 @@ class PatternPosePopulation(population_search.Population):
         mutations = np.random.choice([-1,0,1], 4*self.n, replace=True, p = [1/3,1/3,1/3]).reshape(-1,4)          
 
 #        2. Mutate theta (the angle) - Add the equivalent of 1 degree in radians.
-        mutations[:,2] = 0.0174533
+#       TODO make sure the radians addition is correct
+#        mutations[:,2] = 0.0174533
         
-        self.W = self.W + mutations
-        
-        
+        self.W = self.W + mutations           
         
     def set_distance_image(self, distance_image):
         self.distance_image = distance_image
@@ -163,11 +161,12 @@ def test_particle_filter_search(population, genererations):
     plt.title('Cost vs generation index')
     plt.show()
         
-#   TODO 
+#   TODO Occasional error here
 #  File "C:/DEV/AI-1/my_submission.py", line 166, in test_particle_filter_search
 #    if len(pop.best_w) !=0:
 #
 #AttributeError: 'PatternPosePopulation' object has no attribute 'best_w'
+
 
     try: 
         pattern_utils.display_solution(pat_list, 
@@ -176,6 +175,7 @@ def test_particle_filter_search(population, genererations):
                       pop.best_w)
     except:
         pass
+    
 #    TODO save solution to file use [start_time]_Solution.png name
                       
 #    pattern_utils.replay_search(pat_list, 
@@ -235,18 +235,20 @@ if __name__=='__main__':
     computationalBudget = 1000
     
 #    Specify the population sizes to be tested
-    testPopulations = (1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 100, 200, 500, 1000)
+#    testPopulations = (1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 100, 200, 500, 1000)
+    
+    testPopulations = (40,)
     
 #    testRepeat - specifies the number of times a test is to be repeated
-    testRepeat = 5
+    testRepeat = 1
     
     for population in testPopulations:
         genererations = int(computationalBudget / population)
-        print('1. ', population, genererations)  
+#        print('1. ', population, genererations)  
         
         t = 1
         while t <= testRepeat:    
-            print('2. ', population, genererations)  
+#            print('2. ', population, genererations)  
             test_particle_filter_search(population, genererations)  
 #            test_particle_filter_search(20, 50)        
             t = t + 1          
