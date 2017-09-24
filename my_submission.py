@@ -51,15 +51,14 @@ class PatternPosePopulation(population_search.Population):
 #        2. Calculate the cost of each particle        
         self.C = self.distance_image[self.W[:,1].astype(int), self.W[:,0].astype(int)]        
         
-#        3. Evaluate cost of shape (Triangle)         
+#        3. Evaluate cost of particle (Triangle)         
         evaluateResults = np.zeros(self.n)
         
         for i in range(self.n):            
             results = self.pat.evaluate(self.distance_image, self.W[i])            
             evaluateResults[i] = np.array(results[0])
-        self.C = np.array(evaluateResults)        
-                
-#        print('debug, evaluateResults: ', evaluateResults[i], 'debug, results: ', results)
+            
+        self.C = np.array(evaluateResults)                        
         
         # Determine which particle has the lowest cost
         i_min = self.C.argmin()
@@ -95,9 +94,9 @@ class PatternPosePopulation(population_search.Population):
         mutations = np.random.choice([-1,0,1], 4*self.n, replace=True, p = [1/3,1/3,1/3]).reshape(-1,4)          
 
 #        2. Mutate theta (the angle) - Add the equivalent of 1 degree in radians.
-#       TODO make sure the radians addition is correct
-#        mutations[:,2] = 0.0174533
+        mutations[:,2] = np.random.choice([-0.0174533,0,0.0174533], self.n, replace=True, p = [1/3,1/3,1/3])        
         
+#        3. Add Mutations to original pose
         self.W = self.W + mutations           
         
     def set_distance_image(self, distance_image):
@@ -107,9 +106,13 @@ class PatternPosePopulation(population_search.Population):
 
 def initial_population(region, scale = 10, pop_size=20):
     '''
+    initial population: exploit info from region   
+    @param
+        region : 
+        scale : 
+        pop_size : 
     
-    '''        
-#     initial population: exploit info from region    
+    '''         
     
     rmx, rMx, rmy, rMy = region
     W = np.concatenate( (
@@ -117,7 +120,6 @@ def initial_population(region, scale = 10, pop_size=20):
                  np.random.uniform(low=rmy,high=rMy, size=(pop_size,1)) ,
                  np.random.uniform(low=-np.pi,high=np.pi, size=(pop_size,1)) ,
                  np.ones((pop_size,1))*scale
-                 #np.random.uniform(low=scale*0.9, high= scale*1.1, size=(pop_size,1))
                         ), axis=1)    
     return W
 
@@ -125,6 +127,9 @@ def initial_population(region, scale = 10, pop_size=20):
 def test_particle_filter_search(population, genererations):
     '''
     Run the particle filter search on test image 1 or image 2 of the pattern_utils module
+    @param
+        population : population of shapes to be created
+        genererations : The number of generations that the experiment will run for
     
     '''
 
@@ -133,7 +138,7 @@ def test_particle_filter_search(population, genererations):
         imf, imd , pat_list, pose_list = pattern_utils.make_test_image_1(True)
         ipat = 2 # index of the pattern to target
     else:
-#         use image 2
+#        use image 2
         imf, imd , pat_list, pose_list = pattern_utils.make_test_image_2(True)
         ipat = 0 # index of the pattern to target
         
@@ -151,22 +156,22 @@ def test_particle_filter_search(population, genererations):
     
     pop.temperature = 5
     
+#    Time how long it takes for particle_filter_search() to execute.
     start_time = timeit.default_timer()
     
     Lw, Lc = pop.particle_filter_search(genererations,log=True)
     
     executionTime = timeit.default_timer() - start_time    
     
+    plotTitle = 'Population Size: ', population, ', Generations: ', genererations
+    
     plt.plot(Lc)
-    plt.title('Cost vs generation index')
+    plt.title(plotTitle)
     plt.show()
         
-#   TODO Occasional error here
-#  File "C:/DEV/AI-1/my_submission.py", line 166, in test_particle_filter_search
-#    if len(pop.best_w) !=0:
-#
-#AttributeError: 'PatternPosePopulation' object has no attribute 'best_w'
 
+#   TODO Occasional error raised when experiment ...
+#   AttributeError: 'PatternPosePopulation' object has no attribute 'best_w'
 
     try: 
         pattern_utils.display_solution(pat_list, 
@@ -178,10 +183,10 @@ def test_particle_filter_search(population, genererations):
     
 #    TODO save solution to file use [start_time]_Solution.png name
                       
-#    pattern_utils.replay_search(pat_list, 
-#                      pose_list, 
-#                      pat,
-#                      Lw)
+    pattern_utils.replay_search(pat_list, 
+                      pose_list, 
+                      pat,
+                      Lw)
 
     report_particle_filter_search(start_time, 
                                   executionTime, 
@@ -204,23 +209,11 @@ def report_particle_filter_search(startTime, executionTime, population, generera
     - best_cost for each generation    
         
     '''
-#    Prepare file output
-    columnNames = 'testName,startTime,executionTime,population,genererations'            
-    newRow = 'p' + str(population) + ' x ' + 'g' + str(genererations) + ',' + str(startTime) + ',' + str(executionTime) + ',' + str(population) + ',' + str(genererations) + ', ' + str(Lc).strip('[]')
+#    Prepare file output       
+    newRow = 'p' + str(population) + ' x ' + 'g' + str(genererations) + ',' + str(executionTime) + ',' + str(population) + ',' + str(genererations) + ', ' + str(Lc).strip('[]')
    
-    count = 0
-#     TODO help debug this
-    for i in Lc:
-        count = count + 1
-#        newRow = newRow + str(Lc[i])  
-        columnNames = columnNames + ',' + str(count)
-        
-      
-#    IF file exists, open and append row
     fName = ('log_particle_filter_search_.csv')
     with open(fName,'a') as f:
-#        TODO if file is empty write column names
-        f.write(columnNames + '\n')
         f.write(newRow + '\n')
         f.close()    
                     
@@ -228,19 +221,18 @@ def report_particle_filter_search(startTime, executionTime, population, generera
 if __name__=='__main__':    
     '''
     This script calls the test_particle_filter_search(population, genererations)
-    test population and genereration sizes are specified     
+    computationalBudget, test population and testRepeat are specified     
     
     '''     
-#     The assignment allows for a computational budget of 1000 (e.g. 5x200, 50x20)
-    computationalBudget = 1000
+    computationalBudget = 1000     
+    testRepeat = 1  
+    testPopulations = (50, )     
     
-#    Specify the population sizes to be tested
-#    testPopulations = (1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 100, 200, 500, 1000)
-    
-    testPopulations = (40,)
-    
+#    testPopulations = (1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 100, 200, 500, 1000,)    
+#    testPopulations = (1000, )#500, 400, 200, 100, 75, 50, 25, 20, 10, 5)
+        
 #    testRepeat - specifies the number of times a test is to be repeated
-    testRepeat = 1
+    
     
     for population in testPopulations:
         genererations = int(computationalBudget / population)
@@ -248,9 +240,7 @@ if __name__=='__main__':
         
         t = 1
         while t <= testRepeat:    
-#            print('2. ', population, genererations)  
             test_particle_filter_search(population, genererations)  
-#            test_particle_filter_search(20, 50)        
             t = t + 1          
             
     
